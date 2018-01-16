@@ -15,40 +15,48 @@
 #include "time.h"
 #include "decadriver/deca_device_api.h"
 
-int writetospi(uint16 headerLength, const uint8 *headerBuffer, uint32 bodylength, const uint8 *bodyBuffer){
-    if(SPIM_UWB_initVar == 1u){
-        for(uint16 i=0u; i < headerLength; i++){
-            SPIM_UWB_WriteTxData(headerBuffer[i]);
-            while((SPIM_UWB_ReadTxStatus() & SPIM_UWB_STS_SPI_DONE) == 0u);
-            SPIM_UWB_ClearRxBuffer();
-            SPIM_UWB_ClearTxBuffer();
-        }
-
-        for(uint32 i=0u; i < bodylength; i++){
-            SPIM_UWB_WriteTxData(0x00);
-            SPIM_UWB_WriteTxData(bodyBuffer[i]);
-            while((SPIM_UWB_ReadTxStatus() & SPIM_UWB_STS_SPI_DONE) == 0u);
-            SPIM_UWB_ClearRxBuffer();
-            SPIM_UWB_ClearTxBuffer();
-        }
-        
-        return 0u;
+int writetospi(uint16 headerLength, const uint8 *headerBuffer, uint32 bodylength, const uint8 *bodyBuffer)
+{
+    UWB_CSN_Write(0); // Enable CSN
+    
+    SPIM_UWB_ClearTxBuffer(); // Clear buffer (just in case)
+    
+    // Write Header 1 or 2 bytes
+    for(uint16 i=0u; i < headerLength; i++)
+    {
+        SPIM_UWB_WriteTxData(headerBuffer[i]);
+        while((SPIM_UWB_ReadTxStatus() & SPIM_UWB_STS_SPI_DONE) == 0u);
     }
-    return -1;
+
+    SPIM_UWB_ClearRxBuffer(); // discard byte
+
+    for(uint32 i=0u; i < bodylength; i++)
+    {
+        SPIM_UWB_WriteTxData(bodyBuffer[i]);
+        while((SPIM_UWB_ReadTxStatus() & SPIM_UWB_STS_SPI_DONE) == 0u);
+    }
+        
+    SPIM_UWB_ClearRxBuffer();
+
+    UWB_CSN_Write(1); // Disable CSN
+    
+    return 0u;
 }
 
 int readfromspi(uint16 headerLength, const uint8 *headerBuffer, uint32 readlength, uint8 *readBuffer)
 {
     UWB_CSN_Write(0); // Enable CSN
 
+    SPIM_UWB_ClearTxBuffer(); // Clear buffer (just in case)
+
     // Write Header 1 or 2 bytes
     for(uint16 i=0u; i < headerLength; i++)
     {
-        SPIM_UWB_ClearTxBuffer(); // Clear buffer (just in case)
         SPIM_UWB_WriteTxData(headerBuffer[i]);
         while((SPIM_UWB_ReadTxStatus() & SPIM_UWB_STS_SPI_DONE) == 0u);
-        SPIM_UWB_ClearRxBuffer(); // discard byte
     }
+
+    SPIM_UWB_ClearRxBuffer(); // discard byte
 
     for(uint32 i=0u; i < readlength; i++)
     {
@@ -59,6 +67,8 @@ int readfromspi(uint16 headerLength, const uint8 *headerBuffer, uint32 readlengt
             readBuffer[i] = SPIM_UWB_ReadRxData();
         }
     }
+
+    SPIM_UWB_ClearRxBuffer();
     
     UWB_CSN_Write(1); // Disable CSN
         
