@@ -37,28 +37,32 @@ int writetospi(uint16 headerLength, const uint8 *headerBuffer, uint32 bodylength
     return -1;
 }
 
-int readfromspi(uint16 headerLength, const uint8 *headerBuffer, uint32 readlength, uint8 *readBuffer){
-    if(SPIM_UWB_initVar == 1u){
-        for(uint16 i=0u; i < headerLength; i++){
-            SPIM_UWB_WriteTxData(headerBuffer[i]);
-            while((SPIM_UWB_ReadTxStatus() & SPIM_UWB_STS_SPI_DONE) == 0u);
-            SPIM_UWB_ClearRxBuffer();
-            SPIM_UWB_ClearTxBuffer();
-        }
+int readfromspi(uint16 headerLength, const uint8 *headerBuffer, uint32 readlength, uint8 *readBuffer)
+{
+    UWB_CSN_Write(0); // Enable CSN
 
-        for(uint32 i=0u; i < readlength; i++){
-            SPIM_UWB_WriteTxData(0x00);
-            while((SPIM_UWB_ReadTxStatus() & SPIM_UWB_STS_SPI_DONE) == 0u);
-            SPIM_UWB_ClearTxBuffer();
-            if(SPIM_UWB_GetRxBufferSize() > 0u){
-                readBuffer[i] = SPIM_UWB_ReadRxData();
-            }
+    // Write Header 1 or 2 bytes
+    for(uint16 i=0u; i < headerLength; i++)
+    {
+        SPIM_UWB_ClearTxBuffer(); // Clear buffer (just in case)
+        SPIM_UWB_WriteTxData(headerBuffer[i]);
+        while((SPIM_UWB_ReadTxStatus() & SPIM_UWB_STS_SPI_DONE) == 0u);
+        SPIM_UWB_ClearRxBuffer(); // discard byte
+    }
+
+    for(uint32 i=0u; i < readlength; i++)
+    {
+        SPIM_UWB_WriteTxData(0x00);
+        while((SPIM_UWB_ReadTxStatus() & SPIM_UWB_STS_SPI_DONE) == 0u);
+        if(SPIM_UWB_GetRxBufferSize() > 0u)
+        {
+            readBuffer[i] = SPIM_UWB_ReadRxData();
         }
-        
-        return 0u;
     }
     
-    return -1u;
+    UWB_CSN_Write(1); // Disable CSN
+        
+    return 0u;
 }
 
 void deca_sleep(unsigned int time_ms)

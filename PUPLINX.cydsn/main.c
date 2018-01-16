@@ -16,44 +16,69 @@ void StackEventHandler( uint32 eventCode, void *eventParam );
 
 int main()
 {
-    CyGlobalIntEnable;   /* Enable global interrupts */
+    uint8 Status;
     
     SPIM_UWB_Start();
     UART_Start();
-    UWB_RESETN_Write(1u);
     
+    UWB_RESETN_Write(0u);
+    UWB_WAKEUP_Write(0u);
+    UWB_CSN_Write(1);
+    UWB_RESETN_Write(1u); // HiZ reset pin
+    CyDelayUs(100);
+    UWB_WAKEUP_Write(1u);
+    CyDelay(10); // Allow for 4ms Wakeup
+    
+    CyGlobalIntEnable;   /* Enable global interrupts */    
+    
+
+    for(;;)
+    {
+        Status = UWB_RESETN_Read();
+        Status = UWB_IRQN_Read();
+        uint32 id = dwt_readdevid();
+        uint32 idx = id;
+        
+        CyDelay(100);
+    }
+        
+    /*
     if(UART_initVar != 1u){
         UART_UartPutString("Error enabling UART...\r\n");
     }
     
     uint8 dataA[3] ={0x1, 0x2, 0x3};
     uint8 dataB[3];
-    dwt_writetodevice(0x21, 0, 3, &dataA[0]);
-    dwt_readfromdevice(0x21, 0 , 3, &dataB[0]);
+    //dwt_writetodevice(0x21, 0, 3, &dataA[0]);
+    //dwt_readfromdevice(0x21, 0 , 3, &dataB[0]);
     
     if(SPIM_UWB_initVar == 1u){
         UART_UartPutString("SPI enabled...\r\n");
         UART_UartPutString("Configuring DW1000...\r\n");
-        if (dwt_initialise(DWT_LOADNONE) == DWT_ERROR){
+        if (dwt_initialise(DWT_LOADNONE) == DWT_ERROR)
+        {
             UART_UartPutString("Error configuring DW1000...\r\n");
             while (1);
         }
-    /* Configure DW1000. See NOTE 3 below. */
-    /*dwt_configure(&config);
+    */
+    
+    // Configure DW1000. See NOTE 3 below.
+    // dwt_configure(&config);
 
-        uint32 id = dwt_readdevid();
-        uint32 idx = id;*/
-    }
+
+        
     
     /* Place your initialization/startup code here (e.g. MyInst_Start()) */
-
+/*
     CyBle_Start( StackEventHandler );
     
     for(;;)
     {
-        /* Place your application code here */
+        // Place your application code here
         CyBle_ProcessEvents();
     }
+*/
+
 }
 
 void StackEventHandler( uint32 eventCode, void *eventParam )
